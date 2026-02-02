@@ -160,7 +160,7 @@ def run():
 
 
 def _main_loop():
-    global last_periodic_check
+    global last_periodic_check, last_processed_sys_cmd, last_processed_manual_update
     while True:
         try:
             # Check for commands from Kodular
@@ -244,7 +244,8 @@ def _main_loop():
                             # Reset tracking when manual_update is false
                             last_processed_manual_update = None
                 else:
-                    print(f"Command poll failed (code {r.status_code}): {r.text}")
+                    print(
+                        f"Command poll failed (code {r.status_code}): {r.text}")
                     r.close()
 
         except Exception as e:
