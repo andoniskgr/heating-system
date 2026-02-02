@@ -169,7 +169,6 @@ def _main_loop():
 
             if r.status_code == 200:
                 response = r.json()
-                r.close()
 
                 if response:
                     # Debug: Print received response
@@ -243,10 +242,12 @@ def _main_loop():
                         else:
                             # Reset tracking when manual_update is false
                             last_processed_manual_update = None
-                else:
-                    print(
-                        f"Command poll failed (code {r.status_code}): {r.text}")
-                    r.close()
+                # else: response is empty/None, which is fine - just no commands to process
+
+                r.close()
+            else:
+                print(f"Command poll failed (code {r.status_code}): {r.text}")
+                r.close()
 
         except Exception as e:
             print("Polling Error:", e)
