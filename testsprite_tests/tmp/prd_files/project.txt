@@ -1,3 +1,0 @@
-i have a raspberry pi pico w that is connected on my heating system.
-can turn it on/off and i have a view of the petrol tank through an ultrasonic sensor.
-all the data stored to firebase database and froom there my android application read it.
