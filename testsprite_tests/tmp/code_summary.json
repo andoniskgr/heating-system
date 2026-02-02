@@ -1,0 +1,53 @@
+{
+  "tech_stack": [
+    "MicroPython",
+    "Raspberry Pi Pico",
+    "network (WiFi STA)",
+    "urequests (HTTP)",
+    "Firebase Realtime Database",
+    "machine (GPIO)",
+    "ntptime"
+  ],
+  "features": [
+    {
+      "name": "WiFi connection",
+      "description": "Connects to WiFi using STA_IF, syncs time via NTP on connect.",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Ultrasonic distance sensor",
+      "description": "Reads distance in cm from HC-SR04 on TRIG=GP3, ECHO=GP2 (get_distance).",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Relay control",
+      "description": "Controls heating relay on GPIO 15 (active-low: LOW=ON, HIGH=OFF).",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Firebase status and history",
+      "description": "Updates Firebase system state (current_status, current_level, last_update) and appends to history log (update_firebase).",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Firebase connection test",
+      "description": "Writes a test payload to Firebase at startup to verify connectivity (test_firebase_connection).",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Command polling",
+      "description": "Polls Firebase command.json for system_cmd (ON/OFF) and manual_update; deduplicates and drives relay + update_firebase.",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Periodic update",
+      "description": "When relay is ON, sends periodic Firebase update every 30 minutes (configurable).",
+      "files": ["main.py"]
+    },
+    {
+      "name": "Timestamp utility",
+      "description": "Formats local time as YYYY-MM-DD HH:MM:SS (get_timestamp).",
+      "files": ["main.py"]
+    }
+  ]
+}
