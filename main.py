@@ -12,7 +12,8 @@ FIREBASE_URL = "https://homeautomation-ecd71-default-rtdb.firebaseio.com/"
 FIREBASE_AUTH = "AIzaSyCjYikZfY96MyqrczvvFItllPZI9BSPjog"
 
 # --- Hardware Pins ---
-RELAY_PIN = machine.Pin(15, machine.Pin.OUT)
+# Start with relay OFF (active-low: HIGH = OFF)
+RELAY_PIN = machine.Pin(15, machine.Pin.OUT, value=1)
 TRIG = machine.Pin(3, machine.Pin.OUT)
 ECHO = machine.Pin(2, machine.Pin.IN)
 
