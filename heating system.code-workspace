@@ -1,12 +1,12 @@
 {
-	"folders": [
-		{
-			"path": "."
-		},
-		{
-			"name": "Mpy Remote Workspace",
-			"uri": "pico:"
-		}
-	],
-	"settings": {}
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "name": "Mpy Remote Workspace",
+      "uri": "pico:"
+    }
+  ],
+  "settings": {},
 }

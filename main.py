@@ -1,13 +1,9 @@
-import network
 import urequests
 import utime
 import machine
 import json
-import ntptime
 
 # --- Configuration ---
-WIFI_SSID = "devolo Wifi 5 Repeater 1200"
-WIFI_PASS = "Tony0105"
 FIREBASE_URL = "https://homeautomation-ecd71-default-rtdb.firebaseio.com/"
 FIREBASE_AUTH = "AIzaSyCjYikZfY96MyqrczvvFItllPZI9BSPjog"
 
@@ -19,21 +15,10 @@ ECHO = machine.Pin(2, machine.Pin.IN)
 
 
 def connect_wifi():
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(WIFI_SSID, WIFI_PASS)
-
-    print("Connecting to WiFi", end="")
-    while not wlan.isconnected():
-        print(".", end="")
-        utime.sleep(1)
-
-    print("\nConnected! IP:", wlan.ifconfig()[0])
-    try:
-        ntptime.settime()  # Sync Pico clock with internet time
-        print("Time synchronized.")
-    except:
-        print("Time sync failed. Check internet connection.")
+    """Connect via WiFi Manager (STA/AP flow, credentials from file)."""
+    import wifi_manager
+    wifi_manager.ensure_wifi()
+    print("Connected! IP:", wifi_manager.get_ip())
 
 
 def get_distance():
