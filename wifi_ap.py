@@ -5,6 +5,7 @@ Includes captive portal: DNS server redirects all lookups to our IP,
 so connecting devices auto-open the config page.
 """
 
+import machine
 import network
 import socket
 try:
@@ -95,6 +96,16 @@ def _parse_query(query):
     return params
 
 
+def _led_flash_ap():
+    """Flash LED 3 times (AP mode: waiting for config)."""
+    led = machine.Pin(wifi_config.LED_PIN, machine.Pin.OUT)
+    for _ in range(3):
+        led.value(1)
+        utime.sleep_ms(100)
+        led.value(0)
+        utime.sleep_ms(100)
+
+
 def _url_decode(s):
     """Simple URL decode for form values (MicroPython compatible)."""
     if not s:
@@ -145,10 +156,18 @@ def run_ap_config_loop():
     user_pass = ""
     retry_count = 0
     config_url = "http://" + wifi_config.AP_IP + "/"
+    last_flash_ms = 0
+    AP_FLASH_INTERVAL_MS = 3000
 
     try:
         while True:
             readable, _, _ = select([dns_sock, http_sock], [], [], 0.5)
+
+            # Flash LED 3 times every 3 seconds while waiting for config
+            now_ms = utime.ticks_ms()
+            if last_flash_ms == 0 or utime.ticks_diff(now_ms, last_flash_ms) >= AP_FLASH_INTERVAL_MS:
+                _led_flash_ap()
+                last_flash_ms = now_ms
 
             for s in readable:
                 if s is dns_sock:

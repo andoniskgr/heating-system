@@ -19,6 +19,6 @@ MAX_RETRIES = 3
 CONNECT_TIMEOUT_SEC = 15
 
 # --- Hardware Pins ---
-LED_PIN = 25          # Onboard LED (Pico W)
-RESET_BUTTON_PIN = 16  # GPIO for reset button (hold >3s to clear credentials)
+LED_PIN = "LED"       # Onboard LED (use "LED" for Pico W; GPIO 25 for original Pico)
+RESET_BUTTON_PIN = 0  # GPIO for reset button (hold >3s to clear credentials)
 RESET_HOLD_SEC = 3
