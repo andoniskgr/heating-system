@@ -21,6 +21,16 @@ def connect_wifi():
     print("Connected! IP:", wifi_manager.get_ip())
 
 
+def sync_ntp():
+    """Sync RTC with NTP server (UTC). Required for accurate Unix timestamps."""
+    try:
+        import ntptime
+        ntptime.settime()
+        print("✓ NTP sync OK:", get_timestamp())
+    except Exception as e:
+        print("NTP sync failed:", e)
+
+
 def get_distance():
     """Returns the distance from ultrasonic sensor in cm"""
     TRIG.low()
@@ -40,6 +50,39 @@ def get_distance():
     return round(distance, 2)
 
 
+def get_config():
+    """Fetches tank config from Firebase /config: length, width, sensor_height (all in cm)."""
+    try:
+        url = f"{FIREBASE_URL}config.json?auth={FIREBASE_AUTH}"
+        r = urequests.get(url)
+        if r.status_code == 200:
+            data = r.json()
+            r.close()
+            if data:
+                length = float(data.get("length", 0))
+                width = float(data.get("width", 0))
+                sensor_height = float(data.get("sensor_height", 0))
+                return {"length": length, "width": width, "sensor_height": sensor_height}
+        r.close()
+    except Exception as e:
+        print("Config fetch error:", e)
+    return None
+
+
+def calculate_content_liters(distance_cm, length_cm, width_cm, sensor_height_cm):
+    """
+    Calculate tank content in liters.
+    distance_cm: distance from ultrasonic sensor to water surface (cm)
+    sensor_height_cm: height of sensor from bottom of tank (cm)
+    Water depth from bottom = sensor_height - distance
+    """
+    water_height = sensor_height_cm - distance_cm
+    water_height = max(0, min(water_height, sensor_height_cm))  # Clamp to valid range
+    volume_cm3 = length_cm * width_cm * water_height
+    liters = volume_cm3 / 1000.0
+    return round(liters, 2)
+
+
 def get_timestamp():
     """Generates a formatted string: YYYY-MM-DD HH:MM:SS"""
     t = utime.localtime()
@@ -47,17 +90,27 @@ def get_timestamp():
 
 
 def update_firebase(is_on, level):
-    """Sends current state and logs to Firebase"""
+    """Sends current state and logs to Firebase. level = distance from sensor in cm."""
     print(f"\n[update_firebase called] is_on={is_on}, level={level}")
     ts = get_timestamp()
     status_str = "ON" if is_on else "OFF"
 
-    # 1. Update Current Status
+    # Calculate tank content in liters from config
+    current_content = None
+    config = get_config()
+    if config and config["length"] > 0 and config["width"] > 0 and config["sensor_height"] > 0:
+        current_content = calculate_content_liters(
+            level, config["length"], config["width"], config["sensor_height"]
+        )
+
+    # 1. Update Current Status (last_seen updated only by periodic heartbeat, not here)
     system_data = {
         "current_status": status_str,
         "current_level": level,
         "last_update": ts
     }
+    if current_content is not None:
+        system_data["current_content"] = current_content
     try:
         url = f"{FIREBASE_URL}system.json?auth={FIREBASE_AUTH}"
         # Convert to JSON string and set headers explicitly
@@ -99,6 +152,26 @@ def update_firebase(is_on, level):
         sys.print_exception(e)
 
 
+def get_unix_timestamp():
+    """Returns Unix timestamp (seconds since 1970) for Kodular Clock.MakeInstantFromMillis."""
+    return utime.time()
+
+
+def send_online_signal():
+    """Updates Firebase with online status so Android app can show Pico is connected."""
+    try:
+        last_seen = get_unix_timestamp()
+        online_data = {"online": True, "last_seen": last_seen}
+        url = f"{FIREBASE_URL}system.json?auth={FIREBASE_AUTH}"
+        json_data = json.dumps(online_data)
+        headers = {"Content-Type": "application/json"}
+        r = urequests.patch(url, data=json_data, headers=headers)
+        # Success - Android app can read system.online and system.last_seen
+        r.close()
+    except Exception as e:
+        print("Online signal error:", e)
+
+
 def test_firebase_connection():
     """Test Firebase connection with a simple write"""
     try:
@@ -127,6 +200,8 @@ def test_firebase_connection():
 
 # --- Main Logic ---
 last_periodic_check = 0
+last_online_signal = 0  # Throttle online signal to every 30 seconds
+ONLINE_SIGNAL_INTERVAL_MS = 30 * 1000  # 30 seconds
 # THIRTY_MINUTES_MS = 30 * 60 * 1000  # 30 minutes for production
 THIRTY_MINUTES_MS = 60 * 1000  # 1 min for testing; use 30*60*1000 for production
 
@@ -136,9 +211,10 @@ last_processed_manual_update = None
 
 
 def run():
-    """Entry point: connect WiFi, test Firebase, then run command loop."""
+    """Entry point: connect WiFi, sync NTP, test Firebase, then run command loop."""
     global last_periodic_check
     connect_wifi()
+    sync_ntp()
     test_firebase_connection()  # Test connection at startup
     last_periodic_check = utime.ticks_ms()
     print("System running...")
@@ -146,7 +222,7 @@ def run():
 
 
 def _main_loop():
-    global last_periodic_check, last_processed_sys_cmd, last_processed_manual_update
+    global last_periodic_check, last_online_signal, last_processed_sys_cmd, last_processed_manual_update
     while True:
         try:
             # Check for commands from Kodular
@@ -154,6 +230,11 @@ def _main_loop():
             r = urequests.get(cmd_url)
 
             if r.status_code == 200:
+                # Send online signal every 10 seconds
+                now = utime.ticks_ms()
+                if last_online_signal == 0 or utime.ticks_diff(now, last_online_signal) >= ONLINE_SIGNAL_INTERVAL_MS:
+                    send_online_signal()
+                    last_online_signal = now
                 response = r.json()
 
                 if response:
