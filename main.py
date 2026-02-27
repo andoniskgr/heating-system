@@ -31,6 +31,15 @@ def sync_ntp():
         print("NTP sync failed:", e)
 
 
+def get_chip_temperature():
+    """Returns the Pico's onboard chip temperature in Celsius (ADC4)."""
+    sensor_temp = machine.ADC(4)
+    reading = sensor_temp.read_u16()
+    voltage = reading * (3.3 / 65535)
+    temperature_c = 27 - (voltage - 0.706) / 0.001721
+    return round(temperature_c, 1)
+
+
 def get_distance():
     """Returns the distance from ultrasonic sensor in cm"""
     TRIG.low()
@@ -107,7 +116,8 @@ def update_firebase(is_on, level):
     system_data = {
         "current_status": status_str,
         "current_level": level,
-        "last_update": ts
+        "last_update": ts,
+        "chip_temperature": get_chip_temperature()
     }
     if current_content is not None:
         system_data["current_content"] = current_content
@@ -161,7 +171,11 @@ def send_online_signal():
     """Updates Firebase with online status so Android app can show Pico is connected."""
     try:
         last_seen = get_unix_timestamp()
-        online_data = {"online": True, "last_seen": last_seen}
+        online_data = {
+            "online": True,
+            "last_seen": last_seen,
+            "chip_temperature": get_chip_temperature()
+        }
         url = f"{FIREBASE_URL}system.json?auth={FIREBASE_AUTH}"
         json_data = json.dumps(online_data)
         headers = {"Content-Type": "application/json"}
