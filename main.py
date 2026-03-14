@@ -59,6 +59,52 @@ def get_distance():
     return round(distance, 2)
 
 
+DEFAULT_CONFIG = {
+    "length": "100",
+    "max_height": "150",
+    "sensor_height": "120",
+    "width": "100",
+}
+
+
+def ensure_config_exists():
+    """Check if config exists in Firebase; if not, create with default values."""
+    try:
+        url = f"{FIREBASE_URL}config.json?auth={FIREBASE_AUTH}"
+        r = urequests.get(url)
+        if r.status_code == 200:
+            data = r.json()
+            r.close()
+            # Firebase returns null when path doesn't exist; empty dict or missing keys = no valid config
+            if data and isinstance(data, dict):
+                has_valid = (
+                    float(data.get("length", 0)) > 0
+                    and float(data.get("width", 0)) > 0
+                    and float(data.get("sensor_height", 0)) > 0
+                )
+                if has_valid:
+                    print("Config exists and is valid")
+                    return
+        else:
+            r.close()
+    except Exception as e:
+        print("Config check error:", e)
+
+    # Create default config
+    try:
+        url = f"{FIREBASE_URL}config.json?auth={FIREBASE_AUTH}"
+        json_data = json.dumps(DEFAULT_CONFIG)
+        headers = {"Content-Type": "application/json"}
+        r = urequests.put(url, data=json_data, headers=headers)
+        if r.status_code == 200:
+            print("Created default config:", DEFAULT_CONFIG)
+        else:
+            print(f"Failed to create config (code {r.status_code}): {r.text}")
+        r.close()
+    except Exception as e:
+        print("Config create error:", e)
+
+
 def get_config():
     """Fetches tank config from Firebase /config: length, width, sensor_height (all in cm)."""
     try:
@@ -230,6 +276,7 @@ def run():
     connect_wifi()
     sync_ntp()
     test_firebase_connection()  # Test connection at startup
+    ensure_config_exists()  # Create default config if missing
     last_periodic_check = utime.ticks_ms()
     print("System running...")
     _main_loop()
